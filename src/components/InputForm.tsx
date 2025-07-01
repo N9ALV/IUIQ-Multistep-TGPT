@@ -17,12 +17,12 @@ export const InputForm: React.FC<InputFormProps> = ({
   hasCompanyData 
 }) => {
   const [companyQuery, setCompanyQuery] = useState('');
-  const [apiKey, setApiKey] = useState('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');
+  const [apiKey, setApiKey] = useState('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');
   const [model, setModel] = useState('google/gemini-2.5-flash');
   const [showSettings, setShowSettings] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showAnalysisSectionAnimated, setShowAnalysisSectionAnimated] = useState(false);
-  const [autorunAI, setAutorunAI] = useState(true); // Default to checked
+  const [autorunAI, setAutorunAI] = useState(false); // Changed to false by default
   
   // Renamed for clarity
   const companySearchAutorunExecuted = useRef(false);
