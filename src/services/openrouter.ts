@@ -81,18 +81,17 @@ export async function generateAnalysis(
   companyName: string,
   symbol: string,
   financialData: CompanyFinancialData,
-  apiKey: string,
   model: string
 ): Promise<AnalysisSection> {
   // Check if testing mode is enabled
   if (isTestingMode()) {
-    return mockGenerateAnalysis(companyName, symbol, financialData, apiKey, model);
+    return mockGenerateAnalysis(companyName, symbol, financialData, model);
   }
 
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
       'Content-Type': 'application/json',
       'X-Title': 'Investment Analysis Tool',
     },

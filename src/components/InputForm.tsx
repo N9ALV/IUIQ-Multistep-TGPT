@@ -3,7 +3,7 @@ import { Search, Settings, Eye, EyeOff, Building2 } from 'lucide-react';
 
 interface InputFormProps {
   onCompanySearch: (data: { companyName: string; symbol: string }) => void;
-  onAnalysisRequest: (data: { apiKey: string; model: string }) => void;
+  onAnalysisRequest: (data: { model: string }) => void;
   loadingCompany: boolean;
   loadingAnalysis: boolean;
   hasCompanyData: boolean;
@@ -17,10 +17,8 @@ export const InputForm: React.FC<InputFormProps> = ({
   hasCompanyData 
 }) => {
   const [companyQuery, setCompanyQuery] = useState('');
-  const [apiKey, setApiKey] = useState('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');
   const [model, setModel] = useState('google/gemini-2.5-flash');
   const [showSettings, setShowSettings] = useState(false);
-  const [showApiKey, setShowApiKey] = useState(false);
   const [showAnalysisSectionAnimated, setShowAnalysisSectionAnimated] = useState(false);
   const [autorunAI, setAutorunAI] = useState(false); // Changed to false by default
   
@@ -68,19 +66,18 @@ export const InputForm: React.FC<InputFormProps> = ({
       hasCompanyData && 
       (shouldTriggerAnalysisOnLoad.current || autorunAI) && 
       !analysisAutorunExecuted.current &&
-      apiKey.trim()
+      true
     ) {
       analysisAutorunExecuted.current = true;
       
       // 720ms delay before triggering analysis
       setTimeout(() => {
         onAnalysisRequest({ 
-          apiKey: apiKey.trim(), 
           model 
         });
       }, 720);
     }
-  }, [hasCompanyData, autorunAI, apiKey, model, onAnalysisRequest]);
+  }, [hasCompanyData, autorunAI, model, onAnalysisRequest]);
 
   // Effect to trigger animation when company data is available
   useEffect(() => {
@@ -114,9 +111,8 @@ export const InputForm: React.FC<InputFormProps> = ({
 
   const handleAnalysisSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (hasCompanyData && !loadingAnalysis && apiKey.trim()) {
+    if (hasCompanyData && !loadingAnalysis) {
       onAnalysisRequest({ 
-        apiKey: apiKey.trim(), 
         model 
       });
     }
@@ -270,34 +266,6 @@ export const InputForm: React.FC<InputFormProps> = ({
                 </select>
                 <p className="text-xs text-slate-400 mt-1">
                   DeepSeek R1 is free and provides excellent analysis quality
-                </p>
-              </div>
-
-              <div>
-                <label htmlFor="apiKey" className="block text-sm font-medium text-slate-300 mb-2">
-                  OpenRouter API Key
-                </label>
-                <div className="relative">
-                  <input
-                    id="apiKey"
-                    type={showApiKey ? "text" : "password"}
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="sk-or-..."
-                    className="w-full px-4 py-3 pr-12 bg-custom-darkest border border-custom-border rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-custom-accent focus:border-transparent"
-                    disabled={loadingCompany || loadingAnalysis}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-300"
-                    disabled={loadingCompany || loadingAnalysis}
-                  >
-                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  Required for AI analysis generation
                 </p>
               </div>
 

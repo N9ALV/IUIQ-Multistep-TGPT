@@ -35,7 +35,7 @@ function App() {
     }
   };
 
-  const handleAnalysisRequest = async (request: { apiKey: string; model: string }) => {
+  const handleAnalysisRequest = async (request: { model: string }) => {
     if (!financialData || !companyName || !symbol) return;
 
     setLoadingAnalysis(true);
@@ -47,7 +47,6 @@ function App() {
         companyName, 
         symbol,
         financialData,
-        request.apiKey, 
         request.model
       );
       
