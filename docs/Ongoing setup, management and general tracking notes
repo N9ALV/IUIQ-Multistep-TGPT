@@ -1,0 +1,244 @@
+
+# Plan for Local Setup and Management with Netlify
+
+This plan outlines the steps for setting up a local development environment for the project and managing it with the Netlify CLI.
+
+**1. Initial Setup**
+
+*   **Install Node.js:** Ensure you have Node.js version 18.14.0 or later installed on your machine.
+*   **Install Netlify CLI:** Open your terminal and install the Netlify CLI globally by running:
+    ```bash
+    npm install -g netlify-cli
+    ```
+*   **Authenticate with Netlify:** Log in to your Netlify account by running:
+    ```bash
+    netlify login
+    ```
+    This will open a browser window for you to authorize the CLI.
+
+**2. Link Local Project to Netlify Site**
+
+*   **Navigate to Project Directory:** In your terminal, change to the root directory of your project.
+*   **Link to Existing Site:** Since the site is already deployed, link your local repository to the existing Netlify site by running:
+    ```bash
+    netlify link
+    ```
+    You will be prompted to select the site. Choose the site with the project ID `e84a1bb4-b247-42b8-9fa5-9772dfc69525`. This will create a `.netlify/state.json` file in your project to store the site ID.
+
+**3. Local Development**
+
+*   **Start Development Server:** To run a local development server that mimics the Netlify environment, use the command:
+    ```bash
+    netlify dev
+    ```
+    This will allow you to test your site locally with your Netlify settings and environment variables.
+
+**4. Building and Deploying**
+
+*   **Run a Local Build:** To test your build process locally, run:
+    ```bash
+    netlify build
+    ```
+    This will create a build in your `dist` folder, just as it would on Netlify.
+*   **Manual Deploys:**
+    *   To create a preview deploy with a unique URL, run:
+        ```bash
+        netlify deploy
+        ```
+    *   To deploy to your main production site, use the `--prod` flag:
+        ```bash
+        netlify deploy --prod
+        ```
+
+**5. Ongoing Management**
+
+*   **Environment Variables:** Manage your site's environment variables from the command line:
+    *   `netlify env:set KEY value`
+    *   `netlify env:get KEY`
+    *   `netlify env:list`
+*   **Project Information:** You can always find your project ID and other information in your Netlify dashboard under "Project settings".
+
+---
+# Additional Best-Practice Notes (2024-05-update)
+
+The items below complement the prior Netlify local-setup guide and should help future developers onboard smoothly and keep the deployment pipeline healthy.
+
+1. **Source-control hygiene**
+   - Commit `netlify.toml` and the generated `.netlify/state.json` so a fresh clone can run `npm i && netlify dev` immediately.
+   - Never commit secrets. Store `NETLIFY_AUTH_TOKEN` and other keys in a password manager or CI secret store.
+
+2. **Continuous-deployment gate**
+   - Add a minimal CI workflow (`.github/workflows/ci.yml`) that runs: `npm ci && npm run lint && npm run build && netlify build --dry`.
+   - In the repository settings, require the CI workflow to pass before merging to `main`.
+
+3. **Node version parity**
+   - Netlify’s default build image uses Node 18. If you upgrade locally, pin the version in both:
+     - `package.json > engines` (e.g. `"node": "20.x"`)
+     - Netlify UI → *Build & deploy → Environment* → `NODE_VERSION = 20`.
+
+4. **`netlify.toml` template**
+   ```toml
+   [build]
+     command     = "npm run build"
+     publish     = "dist"
+     node_version = "18.18.0"
+
+   [dev]
+     command    = "npm run dev"   # vite dev
+     publish    = "dist"
+     targetPort = 5173             # Vite preview port
+
+   [context.production.environment]
+     PUBLIC_API_URL = "https://api.prod.example.com"
+
+   [context.deploy-preview.environment]
+     PUBLIC_API_URL = "https://api.staging.example.com"
+   ```
+
+5. **Environment-variable matrix**
+   - Document all required keys in `docs/env-vars.md` so teammates know which values to request and where they live (UI vs. `netlify.toml`).
+
+6. **Serverless functions (future-proofing)**
+   ```bash
+   netlify functions:create hello-world
+   # → netlify/functions/hello-world.ts
+   netlify dev    # test locally
+   ```
+
+7. **CSS performance warnings**
+   - Replace `-webkit-text-size-adjust` with the standards-based `text-size-adjust`.
+   - For keyframe animations that modify `opacity`/`transform`, add `will-change: opacity, transform;` or shorten duration to mitigate paint/composite cost.
+   - Ensure `postcss.config.js` includes Autoprefixer so future builds generate the correct cross-browser prefixes automatically.
+
+8. **Recommended Netlify plugins**
+   - `@netlify/plugin-lighthouse` – generate Lighthouse reports on every deploy.
+   - `netlify-plugin-cache-nextjs` or `netlify-plugin-cache` – caches `node_modules` to speed up builds.
+
+9. **Disaster-recovery quick link**
+   - If `.netlify` is lost, re-link with: `netlify link --id e84a1bb4-b247-42b8-9fa5-9772dfc69525`.
+
+10. **Monitoring & logs**
+    - Use `netlify status` for quick CLI checks.
+    - Consider enabling Netlify Analytics (paid) or exporting build logs via LogDrains for long-term retention.
+
+11. **Onboarding checklist for new developers**
+    - [ ] Clone repo & run `npm i`
+    - [ ] Install Netlify CLI (`npm i -g netlify-cli`)
+    - [ ] Run `netlify link` (or ensure `.netlify/state.json` present)
+    - [ ] Copy required env vars (see `docs/env-vars.md`)
+    - [ ] `netlify dev` – verify app launches locally
+    - [ ] Optional: set up personal access token for Netlify CLI
+
+---
+# Additional Operational Best Practices (2024-06 update)
+
+Below are advanced recommendations to make this project **production-ready** and to future-proof local/CI workflows. Feel free to prune items that are out of scope for your team.
+
+## 1. Source-control hygiene
+- Commit `netlify.toml` and **`.netlify/state.json`** so newcomers can clone → `npm i` → `netlify dev` without extra linking steps.
+- Exclude `dist/`, `.cache/`, `.env*` and `node_modules/` via `.gitignore`.
+- Store secrets such as `NETLIFY_AUTH_TOKEN` in a password manager; **never** commit them.
+
+## 2. Continuous-deployment (CD) safeguards
+- Enable **required status checks** (GitHub) on `main` so merges only occur if ‑–dry builds succeed.
+- Add a lightweight CI workflow:
+  ```yaml
+ame: lint-build
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npx netlify-cli build --dry
+  ```
+
+## 3. Build-image parity
+- Netlify's default image currently ships Node 18. Pin the same version locally **and** in UI → *Build & deploy → Environment → `NODE_VERSION`*.
+- Add to `package.json`:
+  ```json
+  "engines": {
+    "node": "18.x"
+  }
+  ```
+
+## 4. Canonical `netlify.toml` (starter)
+```toml
+[build]
+  command   = "npm run build"
+  publish   = "dist"
+  node_version = "18.18.0"
+
+[dev]
+  command   = "npm run dev"   # vite
+  publish   = "dist"
+  targetPort = 5173            # Vite preview
+
+[context.production.environment]
+  PUBLIC_API_URL = "https://api.prod.example.com"
+
+[context.deploy-preview.environment]
+  PUBLIC_API_URL = "https://api.staging.example.com"
+```
+
+## 5. Environment-variable lifecycle
+- Keep a living document (`docs/env-vars.md`) describing each required key, its scope (build/runtime/functions), and safe defaults.
+- Preferred CLI commands:
+  ```bash
+  netlify env:set KEY value [--scope functions] [--context production]
+  netlify env:list
+  ```
+
+## 6. Serverless-functions stub
+```bash
+netlify functions:create hello-world
+# => netlify/functions/hello-world.ts
+```
+Test locally via `netlify dev`. This lays groundwork for secure backend logic (e.g. API proxies, Stripe webhooks) without extra infra.
+
+## 7. CSS performance & autoprefixing
+- Replace deprecated `-webkit-text-size-adjust` with `text-size-adjust` in global CSS.
+- Repeated `opacity/transform` warnings inside keyframes can be mitigated by adding `will-change: opacity, transform;` to animated elements or by shortening animation duration.
+- Ensure **Autoprefixer** is active in `postcss.config.js`:
+  ```js
+  module.exports = {
+    plugins: [require('autoprefixer')]
+  };
+  ```
+
+## 8. Recommended Netlify plugins
+| Plugin | Purpose |
+| --- | --- |
+| `@netlify/plugin-lighthouse` | Perf budget reports on every deploy |
+| `netlify-plugin-cache` | Cache `node_modules` & `dist` across builds |
+| `@netlify/plugin-nextjs` | If migrating to Next.js later |
+
+Install via UI → **Plugins** or by adding to `netlify.toml`:
+```toml
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
+```
+
+## 9. Disaster recovery
+- Fresh clone steps: `git clone … && npm i && netlify link --id e84a1bb4-b247-42b8-9fa5-9772dfc69525`.
+- Keep the **Site ID** noted in this doc.
+
+## 10. Monitoring & logs
+- Enable **Netlify Analytics** (paid) or export Build & Function logs via Log Drains.
+- Quick production status from CLI: `netlify status`.
+
+## 11. House-keeping checklist
+- [ ] Commit `netlify.toml` and `.netlify/state.json`
+- [ ] Configure CI lint/build workflow
+- [ ] Pin Node version everywhere
+- [ ] Document env-vars in `docs/env-vars.md`
+- [ ] Verify `netlify dev` works on Windows/macOS/Linux
+- [ ] Audit Tailwind build size (`npm run tailwind:build -- --minify`)
+
+---
